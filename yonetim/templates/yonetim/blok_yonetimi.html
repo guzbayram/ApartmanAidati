@@ -1,0 +1,194 @@
+{% extends 'yonetim/base.html' %}
+{% load widget_tweaks %}
+{% load humanize %}
+
+{% block title %}Blok Yönetimi - {{ site.ad }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Blok Yönetimi - {{ site.ad }}</h5>
+                    <a href="{% url 'yonetim:panel' %}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Panele Dön
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="row mb-4">
+                        <!-- Blok Ekleme/Düzenleme Formu -->
+                        {# Eğer blok listesi boşsa form tam genişlik, doluysa yarım genişlik #}
+                        {# If the block list is empty, the form is full width, otherwise half width #}
+                        <div class="{% if not bloklar and not editing_blok_id %}col-md-12{% else %}col-md-4{% endif %}"> {# editing_blok_id kontrolü eklendi #}
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">{{ form_title }}</h6> {# Dinamik başlık kullanıldı #}
+                                </div>
+                                <div class="card-body">
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        {# Eğer düzenleme modundaysak blok ID'sini gizli alan olarak gönder #}
+                                        {# If in edit mode, send block ID as a hidden field #}
+                                        {% if editing_blok_id %}
+                                            <input type="hidden" name="pk" value="{{ editing_blok_id }}">
+                                        {% endif %}
+
+                                        <div class="mb-3">
+                                            <label for="{{ form.ad.id_for_label }}" class="form-label">
+                                                {{ form.ad.label }}
+                                                {% if form.ad.field.required %}<span class="text-danger">*</span>{% endif %}
+                                            </label>
+                                            {% render_field form.ad class="form-control form-control-sm" %}
+                                            {% if form.ad.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.ad.errors }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="{{ form.daire_sayisi.id_for_label }}" class="form-label">
+                                                {{ form.daire_sayisi.label }}
+                                            </label>
+                                            {% render_field form.daire_sayisi class="form-control form-control-sm" %}
+                                            {% if form.daire_sayisi.help_text %}
+                                                <div class="form-text">{{ form.daire_sayisi.help_text }}</div>
+                                            {% endif %}
+                                            {% if form.daire_sayisi.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.daire_sayisi.errors }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="{{ form.aidat_miktari.id_for_label }}" class="form-label">
+                                                {{ form.aidat_miktari.label }}
+                                            </label>
+                                            {% render_field form.aidat_miktari class="form-control form-control-sm" %}
+                                            {% if form.aidat_miktari.help_text %}
+                                                <div class="form-text">{{ form.aidat_miktari.help_text }}</div>
+                                            {% endif %}
+                                            {% if form.aidat_miktari.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.aidat_miktari.errors }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="{{ form.aciklama.id_for_label }}" class="form-label">
+                                                {{ form.aciklama.label }}
+                                            </label>
+                                            {% render_field form.aciklama class="form-control form-control-sm" %}
+                                            {% if form.aciklama.help_text %}
+                                                <div class="form-text">{{ form.aciklama.help_text }}</div>
+                                            {% endif %}
+                                            {% if form.aciklama.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.aciklama.errors }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-save"></i> Kaydet
+                                        </button>
+                                        {# Eğer düzenleme modundaysak İptal/Yeni Ekle butonu göster #}
+                                        {# If in edit mode, show Cancel/Add New button #}
+                                        {% if editing_blok_id %}
+                                            <a href="{% url 'yonetim:blok_yonetimi' %}" class="btn btn-secondary btn-sm">
+                                                <i class="fas fa-plus"></i> Yeni Blok Ekle
+                                            </a>
+                                        {% endif %}
+
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Blok Listesi -->
+                        {# Eğer bloklar boş değilse blok listesini göster #}
+                        {# If blocks are not empty, show the block list #}
+                        {% if bloklar %}
+                        <div class="col-md-8">
+                             <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Blok Listesi</h6>
+                                </div>
+                                <div class="card-body">
+
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Blok Adı</th>
+                                                        <th>Daire Sayısı</th>
+                                                        <th>Dolu Daire</th>
+                                                        <th>Aidat Miktarı</th>
+                                                        <th>Açıklama</th>
+                                                        <th>İşlemler</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for blok in bloklar %}
+                                                        <tr>
+                                                            <td>{{ blok.ad }}</td>
+                                                            <td>{{ blok.daire_sayisi }}</td>
+                                                            <td>{{ blok.dolu_daire_count }}</td>
+                                                            <td>
+                                                                {% if blok.aidat_miktari %}
+                                                                    {{ blok.aidat_miktari|floatformat:2|intcomma }} TL
+                                                                {% else %}
+                                                                    <span class="text-muted">
+                                                                        {{ site_genel_aidat|default:"Belirlenmemiş"|floatformat:2|intcomma }} TL
+                                                                        <small>(Site Genel)</small>
+                                                                    </span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>{{ blok.aciklama|default:"-" }}</td>
+                                                            <td>
+                                                                <!-- Düzenle Butonu -->
+                                                                {# Düzenleme linki buraya gelecek #}
+                                                                <a href="{% url 'yonetim:blok_duzenle' pk=blok.pk %}" class="btn btn-primary btn-sm me-1" title="Düzenle"> {# Link güncellendi #}
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+
+                                                                <!-- Sil Butonu -->
+                                                                <form method="post" class="d-inline" onsubmit="return confirm('Bu bloğu silmek istediğinizden emin misiniz?');">
+                                                                    {% csrf_token %}
+                                                                    <input type="hidden" name="blok_id" value="{{ blok.id }}">
+                                                                    <button type="submit" name="sil" class="btn btn-danger btn-sm" {% if blok.daireler.exists %}disabled title="Bu blokta daireler var, silinemez"{% endif %}>
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </form>
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %} {# End if bloklar #}
+                    </div> {# End of row mb-4 #}
+
+
+                </div> {# End of card-body #}
+            </div> {# End of card #}
+        </div> {# End of col-12 #}
+    </div> {# End of row #}
+</div> {# End of container-fluid #}
+{% endblock %} 

@@ -1,0 +1,63 @@
+{% extends 'yonetim/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }}{% endblock title %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">{{ title }}</h4>
+            <a href="{% url 'yonetim:panel' %}" class="btn btn-sm btn-secondary">
+                <i class="fas fa-arrow-left"></i> Panele Dön
+            </a>
+        </div>
+        <div class="card-body">
+            {% if user_site.logo %}
+                <div class="mb-3 text-center">
+                    <img src="{{ user_site.logo.url }}" alt="{{ user_site.ad }} Logosu" class="img-thumbnail" style="max-height: 150px;">
+                </div>
+            {% endif %}
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="row">
+                    {% for field in form %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            
+                            {% if field.name == 'otomatik_mail_aktif' or field.name == 'makbuz_yukleme_aktif' %}
+                                <div class="form-check form-switch">
+                                    {% render_field field class+='form-check-input' %}
+                                    <label class="form-check-label" for="{{ field.id_for_label }}">Aktif</label>
+                                </div>
+                            {% elif field.widget_type == 'clearablefile' %}
+                                {% render_field field class+='form-control form-control-sm' %}
+                                {% if field.value %}
+                                    <small class="form-text text-muted">Şu anki dosya: {{ field.value }}</small>
+                                {% endif %}
+                            {% elif field.widget_type == 'textarea' %}
+                                {% render_field field class+='form-control form-control-sm' rows='3' %}
+                            {% else %}
+                                {% render_field field class+='form-control form-control-sm' %}
+                            {% endif %}
+
+                            {% if field.help_text %}
+                                <small class="form-text text-muted">{{ field.help_text|safe }}</small>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Ayarları Kaydet</button>
+                    <a href="{% url 'yonetim:panel' %}" class="btn btn-secondary"><i class="fas fa-times"></i> İptal</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %} 

@@ -1,0 +1,63 @@
+{% extends 'yonetim/base.html' %}
+{% load humanize %}
+
+{% block title %}Giriş Yap - Apartman Yönetim{% endblock title %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0 text-center">Giriş Yap</h4>
+            </div>
+            <div class="card-body">
+                {% if form.errors %}
+                    <div class="alert alert-danger" role="alert">
+                        Lütfen aşağıdaki hataları düzeltin:
+                        {{ form.non_field_errors }}
+                        {% for field in form %}
+                            {% if field.errors %}
+                                <p class="mb-1"><strong>{{ field.label }}:</strong> {{ field.errors|striptags }}</p>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        {{ form.username.label_tag }}
+                        {{ form.username }}
+                        <small class="form-text text-muted">
+                            Kayıt olurken belirlediğiniz kullanıcı adınızı giriniz.
+                        </small>
+                        {% if form.username.help_text %}
+                            <small class="form-text text-muted">{{ form.username.help_text }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.site_kodu.label_tag }}
+                        {{ form.site_kodu }}
+                        {% if form.site_kodu.help_text %}
+                            <small class="form-text text-muted">{{ form.site_kodu.help_text }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.password.label_tag }}
+                        {{ form.password }}
+                        {% if form.password.help_text %}
+                            <small class="form-text text-muted">{{ form.password.help_text }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-block">Giriş Yap</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center py-3">
+                <small>Hesabınız yok mu? <a href="{% url 'yonetim:kayit' %}">Kayıt Olun</a></small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %} 

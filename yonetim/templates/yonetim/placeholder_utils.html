@@ -1,0 +1,18 @@
+{% extends 'yonetim/base.html' %}
+
+{% block title %}{{ title }} - Geliştirme Aşamasında{% endblock title %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="alert alert-secondary">
+        <h4 class="alert-heading">{{ title }}</h4>
+        <p>Bu yardımcı araç/fonksiyon şu anda geliştirme aşamasındadır.</p>
+        <hr>
+        <p class="mb-0">Anlayışınız için teşekkürler.</p>
+        {% if user_site %}
+            <p class="mt-2">Site: {{ user_site.ad }}</p>
+        {% endif %}
+        <a href="{% url 'yonetim:panel' %}" class="btn btn-primary mt-2">Panele Dön</a>
+    </div>
+</div>
+{% endblock content %} 

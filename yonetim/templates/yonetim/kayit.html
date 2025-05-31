@@ -1,0 +1,102 @@
+{% extends 'yonetim/base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }} - Apartman Yönetim{% endblock title %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0 text-center">{{ title }}</h4>
+            </div>
+            <div class="card-body p-3">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="row">
+                        <!-- Kullanıcı Bilgileri -->
+                        <div class="col-md-4">
+                            <h5 class="border-bottom pb-2">Kullanıcı Bilgileri</h5>
+                            <div class="mb-2">
+                                {{ form.username.label_tag }}
+                                {% render_field form.username class="form-control form-control-sm" %}
+                                {% if form.username.errors %}<div class="invalid-feedback d-block">{{ form.username.errors|striptags }}</div>{% endif %}
+                                <small class="form-text text-muted">Giriş yaparken kullanacağınız kullanıcı adınızı belirleyin.</small>
+                            </div>
+                            <div class="mb-2">
+                                {{ form.first_name.label_tag }}
+                                {% render_field form.first_name class="form-control form-control-sm" %}
+                                {% if form.first_name.errors %}<div class="invalid-feedback d-block">{{ form.first_name.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="mb-2">
+                                {{ form.last_name.label_tag }}
+                                {% render_field form.last_name class="form-control form-control-sm" %}
+                                {% if form.last_name.errors %}<div class="invalid-feedback d-block">{{ form.last_name.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="mb-2">
+                                {{ form.email.label_tag }}
+                                {% render_field form.email class="form-control form-control-sm" %}
+                                {% if form.email.errors %}<div class="invalid-feedback d-block">{{ form.email.errors|striptags }}</div>{% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Site Bilgileri -->
+                        <div class="col-md-4">
+                            <h5 class="border-bottom pb-2">Site Bilgileri</h5>
+                            <div class="mb-2">
+                                {{ form.site_ad.label_tag }}
+                                {% render_field form.site_ad class="form-control form-control-sm" %}
+                                {% if form.site_ad.errors %}<div class="invalid-feedback d-block">{{ form.site_ad.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="mb-2">
+                                {{ form.site_adres.label_tag }}
+                                {% render_field form.site_adres class="form-control form-control-sm" rows="2" %}
+                                {% if form.site_adres.errors %}<div class="invalid-feedback d-block">{{ form.site_adres.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="mb-2">
+                                {{ form.site_kod.label_tag }}
+                                {% render_field form.site_kod class="form-control form-control-sm" %}
+                                {% if form.site_kod.errors %}<div class="invalid-feedback d-block">{{ form.site_kod.errors|striptags }}</div>{% endif %}
+                                <small class="form-text text-muted">Eğer mevcut bir siteye katılıyorsanız, lütfen o sitenin kodunu girin.</small>
+                            </div>
+                        </div>
+
+                        <!-- Blok ve Daire Bilgileri -->
+                        <div class="col-md-4">
+                            <h5 class="border-bottom pb-2">Blok ve Daire Bilgileri</h5>
+                            <div class="mb-2">
+                                {{ form.blok_ad.label_tag }}
+                                {% render_field form.blok_ad class="form-control form-control-sm" %}
+                                {% if form.blok_ad.errors %}<div class="invalid-feedback d-block">{{ form.blok_ad.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="mb-2">
+                                {{ form.daire_no.label_tag }}
+                                {% render_field form.daire_no class="form-control form-control-sm" %}
+                                {% if form.daire_no.errors %}<div class="invalid-feedback d-block">{{ form.daire_no.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="mb-2">
+                                {{ form.telefon_no.label_tag }}
+                                {% render_field form.telefon_no class="form-control form-control-sm" %}
+                                {% if form.telefon_no.errors %}<div class="invalid-feedback d-block">{{ form.telefon_no.errors|striptags }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-3">
+                        <button type="submit" class="btn btn-success">Kayıt Ol</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center py-2">
+                <small>Zaten bir hesabınız var mı? <a href="{% url 'yonetim:giris' %}">Giriş Yapın</a></small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %} 

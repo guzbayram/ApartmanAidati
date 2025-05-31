@@ -1,0 +1,642 @@
+{% extends 'yonetim/base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+{% load static %}
+
+{% block title %}{{ title }} - Apartman Yönetim{% endblock title %}
+
+{% block extra_styles %}
+<style>
+    #panel-outer-wrapper {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1; /* Ebeveyni olan main.container içinde kalan alanı doldurur */
+        overflow: hidden; /* İçerik taşmasını engeller */
+    }
+
+    #panel-content-row { /* Form ve Tablo sütunlarının ebeveyni - .row gibi davranacak */
+        display: flex;
+        flex-direction: row;
+        flex-grow: 1; /* #panel-outer-wrapper içinde, üstteki bloklardan sonra kalan alanı doldurur */
+        overflow: hidden; /* İç sütunların taşmasını engeller */
+        margin-left: calc(var(--bs-gutter-x, 1.5rem) * -0.5); /* Aynı negatif margin */
+        margin-right: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+    }
+
+    #form-column { /* Sol sütun */
+        flex: 1; /* Oran: 1/3 */
+        display: flex;
+        flex-direction: column;
+        padding-left: calc(var(--bs-gutter-x, 1.5rem) * 0.5); /* Aynı padding */
+        padding-right: calc(var(--bs-gutter-x, 1.5rem) * 0.5);
+    }
+
+    #tables-column-wrapper { /* Sağ sütunların ebeveyni */
+        flex: 2; /* Oran: 2/3 */
+        display: flex;
+        flex-direction: column;
+        padding-left: calc(var(--bs-gutter-x, 1.5rem) * 0.5);
+        padding-right: calc(var(--bs-gutter-x, 1.5rem) * 0.5);
+    }
+
+    #tables-row { /* Tabloların yer alacağı satır */
+        display: flex;
+        flex-wrap: wrap; /* Sütunların alt satıra geçmesine izin ver */
+        margin-left: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+        margin-right: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+        flex-grow: 1; /* tables-column-wrapper içinde kalan alanı kapla */
+        align-content: flex-start; /* İçerik üstte toplansın */
+    }
+
+    #tables-row > .col-lg-6,
+    #tables-row > .col-lg-12 { /* Tablo sütunları için padding */
+        padding-left: calc(var(--bs-gutter-x, 1.5rem) * 0.5);
+        padding-right: calc(var(--bs-gutter-x, 1.5rem) * 0.5);
+        display: flex; /* Kartların yüksekliği eşitlemek için (isteğe bağlı) */
+        flex-direction: column; /* Kartların flex item olmasını sağla */
+    }
+
+    #tables-row > .col-lg-12 {
+        flex-basis: 100%; /* Genişliği tam kullan */
+    }
+
+    /* Finansal Özet Kartları için Stiller */
+    .financial-summary-row .card-body {
+        padding: 0.75rem; /* Daha kompakt padding */
+    }
+
+    .financial-summary-row .card-title {
+        font-size: 0.875rem; /* Daha küçük başlık */
+        margin-bottom: 0.2rem;
+    }
+
+    .financial-summary-row .card-text {
+        font-size: 1.2rem; /* Biraz daha küçük yazı */
+    }
+
+    /* Sol Sütundaki Form Kartı */
+    .form-selector-card {
+        flex-grow: 1; /* #form-column içinde kalan tüm alanı kapla */
+        display: flex;
+        flex-direction: column;
+        background-color: var(--bs-card-bg, #fff);
+        border: var(--bs-card-border-width, 1px) solid var(--bs-card-border-color, rgba(0, 0, 0, .175));
+        border-radius: var(--bs-card-border-radius, 0.375rem);
+        box-shadow: var(--bs-box-shadow-sm, 0 .125rem .25rem rgba(0, 0, 0, .075));
+    }
+
+    .form-selector-card .card-header {
+        padding: 0.75rem 1rem; /* Standart kart başlığı padding */
+    }
+
+    .form-selector-card .card-body {
+        flex-grow: 1; /* Kart başlığından sonra kalan alanı doldur */
+        overflow-y: auto; /* İçerik taşarsa kaydır */
+        padding: 1rem; /* Form içeriği için padding */
+    }
+
+    /* Tablo Kartları İçin Genel Stil */
+    .table-card {
+        flex-grow: 1; /* Kendi sütununda kalan alanı doldur */
+        display: flex;
+        flex-direction: column;
+        background-color: var(--bs-card-bg, #fff);
+        border: var(--bs-card-border-width, 1px) solid var(--bs-card-border-color, rgba(0, 0, 0, .175));
+        border-radius: var(--bs-card-border-radius, 0.375rem);
+        box-shadow: var(--bs-box-shadow-sm, 0 .125rem .25rem rgba(0, 0, 0, .075));
+    }
+
+    .table-card .card-body {
+        flex-grow: 1; /* Başlıktan sonra kalan alanı doldur */
+        padding: 0rem; /* İç table-responsive padding verecek */
+        display: flex; /* İçeriği (table-responsive) yönetmek için flex */
+        flex-direction: column; /* İçeriği dikey sırala */
+    }
+
+    /* Tablo İçeriği ve Kaydırma */
+    .table-card .table-responsive {
+        flex-grow: 1; /* Kart gövdesinde kalan alanı doldur */
+        overflow-y: auto; /* Dikey kaydırma */
+        max-height: 600px; /* Maksimum yükseklik ayarı */
+    }
+
+    .table-card table thead.sticky-top th {
+        position: sticky;
+        top: 0;
+        background-color: var(--bs-table-dark-bg); /* Başlığın arka plan rengi */
+        z-index: 10; /* Diğer içeriklerin üzerinde kalmasını sağla */
+    }
+
+    .form-toggle-group {
+        margin-bottom: 1rem;
+    }
+
+    /* Stat kartları ve altındaki sütunlar aynı hizaya gelsin - Align stat cards and below columns */
+    .financial-summary-row {
+        margin-left: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+        margin-right: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+    }
+
+    .financial-summary-row .col {
+        padding-left: calc(var(--bs-gutter-x, 1.5rem) * 0.5);
+        padding-right: calc(var(--bs-gutter-x, 1.5rem) * 0.5);
+    }
+
+    /* Hata mesajı için özel stil */
+    .alert-danger {
+        background-color: rgba(220, 53, 69, 0.1) !important; /* Şeffaf kırmızı */
+        border-color: rgba(220, 53, 69, 0.2) !important;
+        color: #dc3545 !important;
+    }
+
+    /* Küçük ekranlarda formun tam genişlik olması için responsive ayar */
+    /* Responsive setting for form to be full width on small screens */
+    @media (max-width: 991.98px) { /* Large breakpoint altı */
+        #panel-content-row {
+            flex-direction: column; /* Sütunları alt alta sırala */
+        }
+
+        #form-column,
+        #tables-column-wrapper {
+            flex: none; /* Flex oranını kaldır */
+            width: 100%; /* Tam genişlik yap */
+            padding-left: calc(var(--bs-gutter-x, 1.5rem) * 0.5);
+            padding-right: calc(var(--bs-gutter-x, 1.5rem) * 0.5);
+        }
+
+        #form-column {
+            margin-bottom: 1.5rem; /* Form ile tablolar arasına boşluk ekle */
+        }
+
+        #tables-row {
+            margin-left: 0; /* Negatif marginleri kaldır */
+            margin-right: 0;
+            flex-direction: column; /* Tablo sütunlarını alt alta sırala */
+        }
+
+        #tables-row > .col-lg-6,
+        #tables-row > .col-lg-12 {
+            padding-left: 0; /* Tablo sütunlarındaki paddingi kaldır */
+            padding-right: 0;
+            margin-bottom: 1.5rem; /* Tablolar arasına boşluk ekle */
+        }
+
+        #tables-row > .col-lg-12 {
+            margin-bottom: 0; /* Son tablonun altına boşluk ekleme */
+        }
+    }
+</style>
+{% endblock extra_styles %}
+
+{% block content %}
+<div id="panel-outer-wrapper">
+    <div class="d-flex justify-content-between align-items-center mb-2 pt-0">
+        <h2>{{ title|default:"Yönetim Paneli" }}</h2>
+        {% if user_site %}
+            <span class="badge bg-secondary fs-6">{{ user_site.ad }} - {{ current_year }} Yılı</span>
+        {% endif %}
+    </div>
+
+    {% if is_admin %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Site Seçimi</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3 align-items-center">
+                        <div class="col-auto">
+                            <label for="site_id" class="form-label">Site:</label>
+                            <select name="site_id" id="site_id" class="form-select" onchange="this.form.submit()">
+                                {% for site in tum_siteler %}
+                                <option value="{{ site.id }}" {% if user_site.id == site.id %}selected{% endif %}>
+                                    {{ site.ad }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if user.is_authenticated %}
+        <div class="alert alert-info alert-sm mb-3 py-2">
+            Merhaba, <strong>{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}</strong>!
+            {% if user_site %}
+                Site: <strong>{{ user_site.ad }}</strong> (Kod: {{ user_site.kod }})
+                {% if user_daire %}
+                    Daireniz: <strong>{{ user_daire.daire_tam_adi }}</strong>
+                {% else %}
+                    <span class="text-warning">Bu site için atanmış aktif bir daireniz yok.</span>
+                {% endif %}
+            {% else %}
+                <span class="text-danger">Bir site ile ilişkili değilsiniz.</span>
+            {% endif %}
+        </div>
+
+        {% if user_site %}
+            <div class="row mb-3 financial-summary-row">
+                <div class="col">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="fas fa-arrow-down"></i> Toplam Gelir (Aidat)</h6>
+                            <p class="card-text mb-0">{{ toplam_gelir|floatformat:2|intcomma }} TL</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card text-white bg-danger">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="fas fa-arrow-up"></i> Toplam Gider</h6>
+                            <p class="card-text mb-0">{{ toplam_gider|floatformat:2|intcomma }} TL</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card text-white {% if kasa_bakiyesi >= 0 %}bg-primary{% else %}bg-warning{% endif %}">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="fas fa-wallet"></i> Kasa Bakiyesi</h6>
+                            <p class="card-text mb-0">{{ kasa_bakiyesi|floatformat:2|intcomma }} TL</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row" id="panel-content-row">
+                <div class="col-md-12 col-lg-4" id="form-column">
+                    <div class="form-selector-card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Kayıt Ekle</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-toggle-group text-center mb-3">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Form Seçimi">
+                                    {% if user_daire %}
+                                    <input type="radio" class="btn-check" name="form_type_selector" id="select_aidat_form" value="aidat" autocomplete="off" checked>
+                                    <label class="btn btn-outline-primary" for="select_aidat_form">Aidat Ekle</label>
+                                    {% endif %}
+                                    {% if user.is_yonetici or user.is_superuser %}
+                                    <input type="radio" class="btn-check" name="form_type_selector" id="select_gider_form" value="gider" autocomplete="off" {% if not user_daire %}checked{% endif %}>
+                                    <label class="btn btn-outline-warning" for="select_gider_form">Gider Ekle</label>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% if user_daire %}
+                            <div id="aidat-form-wrapper">
+                                <h6 class="mb-2 text-center">Kendi Dairenize Aidat Ekle ({{ user_daire.daire_tam_adi }})</h6>
+                                <form method="post" enctype="multipart/form-data" id="aidat_form_actual">
+                                    {% csrf_token %}
+                                    {{ aidat_form.media }}
+                                    {% for field in aidat_form %}
+                                        <div class="mb-2">
+                                            <label for="{{ field.id_for_label }}" class="form-label form-label-sm">{{ field.label }}</label>
+                                            {{ field|add_class:"form-control-sm" }}
+                                            {% if field.help_text %}<div class="form-text form-text-sm">{{ field.help_text|safe }}</div>{% endif %}
+                                            {% if field.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {% for error in field.errors %}{{ error }}{% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    <button type="submit" name="submit_aidat" class="btn btn-info btn-sm mt-2 w-100">Aidat Kaydet</button>
+                                </form>
+                            </div>
+                            {% endif %}
+
+                            {% if user.is_yonetici or user.is_superuser %}
+                            <div id="gider-form-wrapper" {% if user_daire %}style="display:none;"{% endif %}>
+                                <h6 class="mb-2 text-center">Siteye Gider Ekle</h6>
+                                <form method="post" enctype="multipart/form-data" id="gider_form_actual">
+                                    {% csrf_token %}
+                                    {{ gider_form.media }}
+                                    {% for field in gider_form %}
+                                        <div class="mb-2">
+                                            <label for="{{ field.id_for_label }}" class="form-label form-label-sm">{{ field.label }}</label>
+                                            {{ field|add_class:"form-control-sm" }}
+                                            {% if field.help_text %}<div class="form-text form-text-sm">{{ field.help_text|safe }}</div>{% endif %}
+                                            {% if field.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {% for error in field.errors %}{{ error }}{% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    <button type="submit" name="submit_gider" class="btn btn-warning btn-sm mt-2 w-100">Gider Kaydet</button>
+                                </form>
+                            </div>
+                            {% endif %}
+
+                            {% if not user_daire and not user.is_yonetici and not user.is_superuser %}
+                                <p class="text-muted text-center small">Aidat veya gider eklemek için yetkiniz veya aktif daireniz bulunmamaktadır.</p>
+                            {% endif %}
+
+                        </div> {# End of card-body #}
+                    </div> {# End of form-selector-card #}
+                </div> {# End of form-column #}
+
+                <div class="col-md-12 col-lg-8" id="tables-column-wrapper">
+                    <div class="card table-card"> {# Tablo kartı için genel stil #}
+                        <div class="card-header p-2"> {# Sekme başlıkları için padding #}
+                            <ul class="nav nav-tabs card-header-tabs nav-fill" id="tableTabs" role="tablist">
+                                {# Tüm Aidatlar Sekmesi #}
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="aidatlar-tab" data-bs-toggle="tab" data-bs-target="#aidatlarContent" type="button" role="tab" aria-controls="aidatlarContent" aria-selected="true"><small><i class="fas fa-receipt me-1"></i>Tüm Aidatlar</small></button>
+                                </li>
+                                {# Tüm Giderler Sekmesi #}
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="giderler-tab" data-bs-toggle="tab" data-bs-target="#giderlerContent" type="button" role="tab" aria-controls="giderlerContent" aria-selected="false"><small><i class="fas fa-file-invoice-dollar me-1"></i>Tüm Giderler</small></button>
+                                </li>
+                                {# Daire Özetleri Sekmesi #}
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="ozet-tab" data-bs-toggle="tab" data-bs-target="#ozetContent" type="button" role="tab" aria-controls="ozetContent" aria-selected="false"><small><i class="fas fa-chart-pie me-1"></i>Daire Özetleri</small></button>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-body"> {# Tab içeriği için padding kaldırıldı #}
+                            <div class="tab-content"> {# Tab içeriklerinin ebeveyni #}
+
+                                {# Tüm Aidat Kayıtları Tablosu #}
+                                <div class="tab-pane fade show active" id="aidatlarContent" role="tabpanel" aria-labelledby="aidatlar-tab">
+                                    {% if all_aidatlar_list %}
+                                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;"> {# Scrollbar eklendi #}
+                                        <table class="table table-striped table-hover table-sm mb-0">
+                                            <thead class="table-dark sticky-top">
+                                                <tr>
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Tarih</th>{# Sütun başlıkları güncellendi #}
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Blok</th>
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Daire No</th>
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Açıklama</th>
+                                                    <th class="text-end text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Tutar</th>
+                                                    <th class="text-secondary opacity-7">Makbuz</th>{# Makbuz sütunu eklendi #}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for aidat in all_aidatlar_list %}
+                                                <tr>
+                                                    <td>{{ aidat.tarih|date:"d-m-Y" }}</td> {# Tarih alanı güncellendi #}
+                                                    <td>{{ aidat.daire.blok.ad }}</td> {# Blok adı eklendi #}
+                                                    <td>{{ aidat.daire.daire_no }}</td> {# Daire no eklendi #}
+                                                    <td>{{ aidat.aciklama|truncatewords:5 }}</td> {# Açıklama alanı #}
+                                                    <td class="text-end">{{ aidat.tutar|floatformat:2|intcomma }} TL</td> {# Tutar alanı #}
+                                                    <td>
+                                                        {% if aidat.makbuz %}
+                                                            <a href="{{ aidat.makbuz.url }}" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-1" title="Makbuzu Görüntüle"><i class="fas fa-receipt"></i></a>
+                                                        {% endif %}
+                                                    </td> {# Makbuz alanı eklendi #}
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="6" class="text-center">Henüz aidat kaydı bulunmamaktadır.</td>{# colspan güncellendi #}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                        <div class="alert alert-info m-3">Henüz aidat kaydı bulunmamaktadır.</div>
+                                    {% endif %}
+                                </div>
+
+                                {# Tüm Gider Kayıtları Tablosu #}
+                                <div class="tab-pane fade" id="giderlerContent" role="tabpanel" aria-labelledby="giderler-tab"> {# active sınıfı kaldırıldı #}
+                                    {% if all_giderler_list %}
+                                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;"> {# Scrollbar eklendi #}
+                                        <table class="table table-striped table-hover table-sm mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Tarih</th> {# Sütun başlıkları güncellendi #}
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Tür</th>
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Açıklama</th>
+                                                    <th class="text-end text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Tutar</th>
+                                                    <th class="text-secondary opacity-7">Makbuz</th> {# Makbuz sütunu eklendi #}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for gider in all_giderler_list %}
+                                                <tr>
+                                                    <td>{{ gider.tarih|date:"d-m-Y" }}</td> {# Tarih alanı güncellendi #}
+                                                    <td>{{ gider.tur }}</td> {# Tür alanı #}
+                                                    <td>{{ gider.aciklama|truncatewords:5 }}</td> {# Açıklama alanı #}
+                                                    <td class="text-end">{{ gider.tutar|floatformat:2|intcomma }} TL</td> {# Tutar alanı #}
+                                                    <td>
+                                                        {% if gider.makbuz %}
+                                                            <a href="{{ gider.makbuz.url }}" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-1" title="Makbuzu Görüntüle"><i class="fas fa-file-invoice"></i></a>
+                                                        {% endif %}
+                                                    </td> {# Makbuz alanı eklendi #}
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="5" class="text-center">Henüz gider kaydı bulunmamaktadır.</td> {# colspan güncellendi #}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                        <div class="alert alert-info m-3">Henüz gider kaydı bulunmamaktadır.</div>
+                                    {% endif %}
+                                </div>
+
+                                {# Daire Aidat Özet Tablosu #}
+                                <div class="tab-pane fade" id="ozetContent" role="tabpanel" aria-labelledby="ozet-tab"> {# active sınıfı kaldırıldı #}
+                                    {% if site_daireleri_ozet %}
+                                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;"> {# Scrollbar eklendi #}
+                                        <table class="table table-striped table-hover table-sm mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Daire</th>
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Geçen Yıldan Devir Borç/Alacak</th>{# Yeni sütun eklendi #}
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Bu Yıl Toplam Borç (Tahmini)</th>{# Yıllık Borç sütun başlığı güncellendi #}
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Bu Yıl Toplam Ödenen</th>{# Ödenen Tutar sütun başlığı güncellendi #}
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Güncel Kalan Borç/Alacak</th>{# Kalan Borç sütun başlığı güncellendi #}
+                                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Son Ödeme Tarihi</th>
+                                                    <th class="text-secondary opacity-7"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for ozet in site_daireleri_ozet %}
+                                                <tr class="{% if ozet.kalan_borc > 0 %}table-danger{% elif ozet.kalan_borc == 0 and ozet.yillik_borc > 0 %}table-success{% else %}table-light{% endif %}"> {# Renklendirme tekrar eklendi #}
+                                                    <td>
+                                                        <div class="d-flex px-2 py-1">
+                                                            <div class="d-flex flex-column justify-content-center">
+                                                                <h6 class="mb-0 text-sm">{{ ozet.daire.daire_tam_adi }}{% if user_daire and ozet.daire.id == user_daire.id %}<span class="badge bg-info ms-1">Sizin Daireniz</span>{% endif %}</h6>{# Badge için ms-1 eklendi #}
+                                                                {# Eğer kullanıcının dairesiyse daire bilgileri gösterilebilir #}
+                                                                {# If it is the user's flat, flat info can be shown #}
+                                                                {% if user_daire and ozet.daire.id == user_daire.id %}
+                                                                {# Daire bilgileri: Kullanıcı adı, telefon, vb. #}
+                                                                <p class="text-xs text-secondary mb-0">Sakin: {% if ozet.daire.kullanici %}{{ ozet.daire.kullanici.get_full_name|default:ozet.daire.kullanici.username }}{% else %}-{% endif %}</p> {# Sakin bilgisi eklendi #}
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <p class="text-xs font-weight-bold mb-0">{{ ozet.daire.devir_bakiye_gecen_yil|floatformat:2|intcomma }} TL</p>{# Devir bakiye sütunu eklendi #}
+                                                    </td>
+                                                    <td>
+                                                        <p class="text-xs font-weight-bold mb-0">{{ ozet.yillik_borc|floatformat:2|intcomma }} TL</p>
+                                                    </td>
+                                                    <td>
+                                                        <p class="text-xs font-weight-bold mb-0">{{ ozet.odenen_tutar|floatformat:2|intcomma }} TL</p>
+                                                    </td>
+                                                    <td>
+                                                        {# Kalan borç negatif ise yeşil, pozitif ise kırmızı göster #}
+                                                        {% if ozet.kalan_borc > 0 %}
+                                                            <p class="text-xs font-weight-bold mb-0 text-danger">{{ ozet.kalan_borc|floatformat:2|intcomma }} TL</p>
+                                                        {% elif ozet.kalan_borc < 0 %}
+                                                            {# Kalan borç negatifse alacak anlamına gelir #}
+                                                            <p class="text-xs font-weight-bold mb-0 text-success">{{ ozet.kalan_borc|floatformat:2|intcomma|slice:'1:' }} TL (Alacak)</p> {# Baştaki eksi işaretini kaldırdık #}
+                                                        {% else %}
+                                                            <p class="text-xs font-weight-bold mb-0">0.00 TL</p>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        {% if ozet.son_odeme %}
+                                                            <span class="text-secondary text-xs font-weight-bold">{{ ozet.son_odeme.tarih|date:"d.m.Y" }}</span>
+                                                        {% else %}
+                                                            <span class="text-secondary text-xs font-weight-bold">Henüz Ödeme Yok</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="align-middle">
+                                                        {# Detay veya işlem butonu #}
+                                                        {% if user.is_yonetici or user.is_superuser or user_daire and ozet.daire.id == user_daire.id %}
+                                                            <a href="{% url 'yonetim:aidat_yonetimi' daire_id=ozet.daire.id %}" class="btn btn-sm btn-outline-primary" title="Aidatları Görüntüle">
+                                                                <i class="fas fa-eye"></i>
+                                                            </a>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="7" class="text-center">Henüz daire veya aidat özeti bulunmamaktadır.</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                        <div class="alert alert-info m-3">Henüz daire veya aidat özeti bulunmamaktadır.</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div> {# End card-body #}
+                    </div> {# End table-card #}
+                </div> {# End tables-column-wrapper #}
+            </div> {# End panel-content-row #}
+
+        {% else %}
+            <p>Lütfen öncelikle bir siteye dahil olun veya yeni bir site kaydı oluşturun.</p>
+        {% endif %} {# End if user_site #}
+
+    {% else %}
+        <p>İçeriği görmek için lütfen <a href="{% url 'yonetim:giris' %}">giriş yapın</a>.</p>
+    {% endif %} {# End if user.is_authenticated #}
+
+</div> {# End panel-outer-wrapper #}
+{% endblock content %}
+
+{# Formların görünürlüğünü kontrol eden script artık form selector card içinde #}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Form görünürlüğü toggle'ı
+    const formSelectors = document.querySelectorAll('input[name="form_type_selector"]');
+    const aidatFormWrapper = document.getElementById('aidat-form-wrapper');
+    const giderFormWrapper = document.getElementById('gider-form-wrapper');
+
+    function toggleForms() {
+        const selectedForm = document.querySelector('input[name="form_type_selector"]:checked');
+        if (selectedForm) {
+            if (selectedForm.value === 'aidat') {
+                if (aidatFormWrapper) aidatFormWrapper.style.display = 'block';
+                if (giderFormWrapper) giderFormWrapper.style.display = 'none';
+            } else if (selectedForm.value === 'gider') {
+                if (aidatFormWrapper) aidatFormWrapper.style.display = 'none';
+                if (giderFormWrapper) giderFormWrapper.style.display = 'block';
+            }
+        } else { // Hiçbiri seçili değilse varsayılanı göster
+            if (aidatFormWrapper) {
+                aidatFormWrapper.style.display = 'block';
+            } else if (giderFormWrapper) { // Eğer aidat formu yoksa (örneğin kullanıcı daireye atanmamışsa) ve gider formu varsa onu göster
+                giderFormWrapper.style.display = 'block';
+            }
+        }
+    }
+
+    formSelectors.forEach(selector => {
+        selector.addEventListener('change', toggleForms);
+    });
+    // Sayfa yüklendiğinde formu bir kez ayarla
+    toggleForms();
+
+    // POST submit sonrası butonu devre dışı bırakma
+    const formsToDisable = document.querySelectorAll('#aidat_form_actual, #gider_form_actual');
+    formsToDisable.forEach(form => {
+        form.addEventListener('submit', function() {
+            const button = form.querySelector('button[type="submit"]');
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> İşleniyor...';
+            }
+        });
+    });
+
+    // Hangi submit butonuna tıklandığını POST'a ekleme
+    const aidatForm = document.getElementById('aidat_form_actual');
+    const giderForm = document.getElementById('gider_form_actual');
+
+    function addClickedButtonName(form) {
+        if (!form) return;
+        let clickedButton = null; // `clickedButton`'ı fonksiyon içinde tanımlayın
+
+        const buttons = form.querySelectorAll('button[type="submit"]');
+        buttons.forEach(function(btn) {
+            btn.addEventListener('click', function() { // `e` parametresine gerek yok
+                clickedButton = btn;
+            });
+        });
+
+        form.addEventListener('submit', function() { // `e` parametresine gerek yok
+            if (clickedButton && clickedButton.name) {
+                let hiddenInput = document.createElement('input'); // `hidden` yerine `hiddenInput`
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = clickedButton.name;
+                hiddenInput.value = clickedButton.value || '1'; // `value` boşsa '1' ata
+                form.appendChild(hiddenInput);
+            }
+        });
+    }
+
+    addClickedButtonName(aidatForm);
+    addClickedButtonName(giderForm);
+
+    // Form gönderildikten sonra doğru tabı aktif yap
+    const lastSubmittedForm = "{{ last_submitted_form|escapejs }}"; // views.py'den gelen değişken, güvenlik için escapejs
+    const defaultAidatTab = document.getElementById('aidatlar-tab');
+    const defaultGiderTab = document.getElementById('giderler-tab');
+
+    if (lastSubmittedForm === 'aidat' && defaultAidatTab) {
+        var aidatTab = new bootstrap.Tab(defaultAidatTab);
+        aidatTab.show();
+    } else if (lastSubmittedForm === 'gider' && defaultGiderTab) {
+        var giderTab = new bootstrap.Tab(defaultGiderTab);
+        giderTab.show();
+    } else { // Varsayılan olarak ilk uygun tabı açık gelsin veya aidat tabı
+        if (defaultAidatTab) { // Önce aidat tabını kontrol et
+            var aidatTab = new bootstrap.Tab(defaultAidatTab);
+            aidatTab.show();
+        } else if (defaultGiderTab) { // Aidat yoksa gider tabını kontrol et
+             var giderTab = new bootstrap.Tab(defaultGiderTab);
+             giderTab.show();
+        }
+        // Eğer hiçbiri yoksa, Bootstrap varsayılan olarak ilk nav-link.active olanı zaten gösterir.
+    }
+});
+</script>
+{% endblock extra_scripts %}

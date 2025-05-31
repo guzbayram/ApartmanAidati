@@ -1,0 +1,157 @@
+{% extends "yonetim/base.html" %}
+{% load widget_tweaks %}
+{% load humanize %}
+
+{% block title %}{{ title }} - {{ user_site.ad|default:"Site Yönetimi" }}{% endblock title %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4"><i class="fas fa-home me-2"></i>{{ title }} {% if secili_blok %}({{ secili_blok.ad }}){% endif %}</h2>
+
+    <!-- Mesajlar -->
+    {% include "yonetim/partials/messages.html" %}
+
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <!-- Blok Filtreleme -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" id="blokFiltreDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    {% if secili_blok %}
+                        Blok: {{ secili_blok.ad }}
+                    {% else %}
+                        Tüm Bloklar
+                    {% endif %}
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="blokFiltreDropdown">
+                    <li><a class="dropdown-item {% if not secili_blok %}active{% endif %}" href="{% url 'yonetim:daire_yonetimi' %}">Tüm Bloklar</a></li>
+                    {% for blok in bloklar %}
+                    <li><a class="dropdown-item {% if secili_blok and secili_blok.id == blok.id %}active{% endif %}" href="{% url 'yonetim:daire_yonetimi_blok' blok_id=blok.id %}">{{ blok.ad }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#daireEkleModal">
+                <i class="fas fa-plus me-1"></i> Yeni Daire Ekle
+            </button>
+        </div>
+    </div>
+
+    <!-- Daire Listesi -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Daireler</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if daireler %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Blok</th>
+                            <th>Daire No</th>
+                            <th>Tipi</th>
+                            <th>Sakin</th>
+                            <th>Telefon</th>
+                            <th>Dolu mu?</th>
+                            <th>Brüt m²</th>
+                            <th>Net m²</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for daire in daireler %}
+                        <tr>
+                            <td>{{ daire.blok.ad }}</td>
+                            <td>{{ daire.daire_no }}</td>
+                            <td>{{ daire.get_daire_tipi_display|default:"-" }}</td>
+                            <td>{{ daire.kullanici.get_full_name|default:"-" }}</td>
+                            <td>{{ daire.telefon_no|default:"-" }}</td>
+                            <td>
+                                {% if daire.is_dolu %}
+                                    <span class="badge bg-success">Dolu</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Boş</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ daire.m2_brut|default_if_none:"-"|floatformat:"2g"|intcomma }}</td>
+                            <td>{{ daire.m2_net|default_if_none:"-"|floatformat:"2g"|intcomma }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-info me-1" title="Düzenle" data-bs-toggle="modal" data-bs-target="#daireDuzenleModal-{{ daire.id }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <a href="#" class="btn btn-sm btn-outline-danger" title="Sil" onclick="return confirm('Bu daireyi silmek istediğinizden emin misiniz?');">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                                <!-- TODO: Daire Düzenleme Modalı eklenecek -->
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info mb-0 rounded-0">
+                {% if secili_blok %}
+                {{ secili_blok.ad }} bloğunda kayıtlı daire bulunmamaktadır.
+                {% else %}
+                Sistemde kayıtlı daire bulunmamaktadır.
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Yeni Daire Ekle Modal -->
+    <div class="modal fade" id="daireEkleModal" tabindex="-1" aria-labelledby="daireEkleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="post" action="{% if secili_blok %}{% url 'yonetim:daire_yonetimi_blok' blok_id=secili_blok.id %}{% else %}{% url 'yonetim:daire_yonetimi' %}{% endif %}" novalidate>
+                    {% csrf_token %}
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="daireEkleModalLabel">{{ form_title }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% for field in form %}
+                        <div class="mb-3 row">
+                            <label for="{{ field.id_for_label }}" class="col-sm-3 col-form-label col-form-label-sm">
+                                {{ field.label }}{% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            <div class="col-sm-9">
+                                {% render_field field class="form-control form-control-sm" %}
+                                {% if field.help_text %}
+                                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Kapat</button>
+                        <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+    // Eğer form hatalıysa modalı açık tut
+    // If the form has errors, keep the modal open
+    {% if form.errors %}
+    var daireEkleModal = new bootstrap.Modal(document.getElementById('daireEkleModal'), {
+      keyboard: false
+    });
+    daireEkleModal.show();
+    {% endif %}
+</script>
+{% endblock extra_scripts %} 

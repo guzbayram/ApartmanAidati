@@ -1,0 +1,114 @@
+{% extends 'yonetim/base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+{% load static %}
+
+{% block title %}{{ title }} - Apartman Yönetim{% endblock title %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ title }}</h2>
+        {% if user_site %}
+            <span class="badge bg-secondary fs-6">{{ user_site.ad }} - {{ current_year }} Yılı</span>
+        {% endif %}
+    </div>
+
+    {% if user.is_authenticated %}
+        {% if user_site %}
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    {% if secili_daire %}
+                                        <i class="fas fa-home me-2"></i>{{ secili_daire.daire_tam_adi }} - Aidat Kayıtları
+                                    {% else %}
+                                        <i class="fas fa-list me-2"></i>Tüm Aidat Kayıtları
+                                    {% endif %}
+                                </h5>
+                                {% if user.is_yonetici or user.is_superuser %}
+                                    <a href="{% url 'yonetim:panel' %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-plus-circle me-1"></i>Yeni Aidat Ekle
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if aidatlar %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped mb-0">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Tarih</th>
+                                                <th>{% if not secili_daire %}Daire{% endif %}</th>
+                                                <th>Tutar</th>
+                                                <th>Açıklama</th>
+                                                <th>Makbuz</th>
+                                                {% if user.is_yonetici or user.is_superuser %}
+                                                    <th class="text-end">İşlemler</th>
+                                                {% endif %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for aidat in aidatlar %}
+                                                <tr>
+                                                    <td>{{ aidat.tarih|date:"d.m.Y" }}</td>
+                                                    {% if not secili_daire %}
+                                                        <td>{{ aidat.daire.daire_tam_adi }}</td>
+                                                    {% endif %}
+                                                    <td>{{ aidat.tutar|floatformat:2|intcomma }} TL</td>
+                                                    <td>{{ aidat.aciklama|default:"-" }}</td>
+                                                    <td>
+                                                        {% if aidat.makbuz %}
+                                                            <a href="{{ aidat.makbuz.url }}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Makbuzu Görüntüle">
+                                                                <i class="fas fa-receipt"></i>
+                                                            </a>
+                                                        {% else %}
+                                                            <span class="text-muted">-</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    {% if user.is_yonetici or user.is_superuser %}
+                                                        <td class="text-end">
+                                                            {# TODO: Düzenleme ve silme işlemleri için butonlar eklenecek #}
+                                                            {# TODO: Add buttons for edit and delete operations #}
+                                                        </td>
+                                                    {% endif %}
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot class="table-light">
+                                            <tr>
+                                                <td colspan="{% if not secili_daire %}3{% else %}2{% endif %}" class="text-end"><strong>Toplam:</strong></td>
+                                                <td><strong>{{ aidatlar|sum:'tutar'|floatformat:2|intcomma }} TL</strong></td>
+                                                <td colspan="{% if user.is_yonetici or user.is_superuser %}3{% else %}2{% endif %}"></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info m-3">
+                                    {% if secili_daire %}
+                                        {{ secili_daire.daire_tam_adi }} için henüz aidat kaydı bulunmamaktadır.
+                                    {% else %}
+                                        Henüz aidat kaydı bulunmamaktadır.
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="alert alert-warning">
+                Lütfen öncelikle bir siteye dahil olun veya yeni bir site kaydı oluşturun.
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-warning">
+            Bu sayfayı görüntülemek için lütfen <a href="{% url 'yonetim:giris' %}">giriş yapın</a>.
+        </div>
+    {% endif %}
+</div>
+{% endblock content %} 
