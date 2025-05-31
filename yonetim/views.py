@@ -560,11 +560,16 @@ def aidat_yonetimi_view(request, daire_id=None):
     # Sort dues by date
     aidatlar_qs = aidatlar_qs.order_by('-tarih', '-id')
 
+    # Toplam tutarı hesapla
+    # Calculate total amount
+    toplam_tutar = aidatlar_qs.aggregate(toplam=Sum('tutar'))['toplam'] or 0
+
     context = {
         'title': f'Aidat Yönetimi - {secili_daire.daire_tam_adi if secili_daire else "Tüm Aidatlar"}',
         'user_site': user_site,
         'aidatlar': aidatlar_qs,
         'secili_daire': secili_daire,
+        'toplam_tutar': toplam_tutar,  # Toplam tutarı context'e ekle
     }
     return render(request, 'yonetim/aidat_yonetimi.html', context)
 

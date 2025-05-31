@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
     "yonetim.apps.YonetimConfig",
     "widget_tweaks",
+    "mathfilters",  # Matematiksel filtreler için / For mathematical filters
 ]
 
 MIDDLEWARE = [
